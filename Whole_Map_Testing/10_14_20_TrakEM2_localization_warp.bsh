@@ -1,0 +1,43 @@
+import ini.trakem2.display.*;
+import ij.*;
+import org.janelia.saalfeldlab.n5.*;
+import org.janelia.saalfeldlab.n5.hdf5.*;
+import org.janelia.saalfeldlab.n5.imglib2.*;
+
+import ch.systemsx.cisd.hdf5.HDF5Factory;
+import ch.systemsx.cisd.hdf5.IHDF5Reader;
+import ch.systemsx.cisd.hdf5.IHDF5Writer;
+
+for (int z = 1; z < 2; ++z) {
+
+	hdf5Writer = HDF5Factory.open("Y:/Colenso/03_19_20_centrifugal/acquisition/bins/488storm_000_mlist.hdf5");
+	n5 = new N5HDF5Reader(hdf5Writer, new int[]{10000, 100, 100});
+	coordinates = new ArrayList();
+	for (frame : n5.list("/")) {
+		if (frame.matches("^fr_.*")) {
+			IJ.log(frame + "");
+			xs = N5Utils.open(n5, frame + "/x");
+			ys = N5Utils.open(n5, frame + "/y");
+			xCursor = xs.cursor();
+			yCursor = ys.cursor();
+			while (xCursor.hasNext()) {
+				x = xCursor.next().get();
+				y = yCursor.next().get();
+				coordinates.add(new double[]{x,y });
+			}
+		}
+	}
+
+	/* find Transformation */
+	ct = null;
+	for ( p : Display.getFront().getLayerSet().getDisplayables( Patch.class ) )
+		if (Math.round(p.getLayer().getZ()) == z)
+			ct = p.getFullCoordinateTransform();
+	
+	/* loop over all coordinates and do */
+	for (coordinate : coordinates) {
+		transformedCoordinate = ct.apply(coordinate);
+		IJ.log(Arrays.toString(coordinate) + " -> " + Arrays.toString(transformedCoordinate));
+	}
+}
+	
