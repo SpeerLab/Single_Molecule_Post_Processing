@@ -1,0 +1,221 @@
+import ini.trakem2.io.CoordinateTransformXML;
+import ini.trakem2.Project;
+import ini.trakem2.Display;
+
+//import ij.*;
+import org.janelia.saalfeldlab.n5.*;
+import org.janelia.saalfeldlab.n5.hdf5.*;
+import org.janelia.saalfeldlab.n5.imglib2.*;
+
+import ch.systemsx.cisd.hdf5;
+import ch.systemsx.cisd.hdf5.IHDF5SimpleWriter;
+import ch.systemsx.cisd.hdf5.exceptions;
+import ch.systemsx.cisd.hdf5.h5ar;
+import ch.systemsx.cisd.hdf5.io;
+import hdf.hdf5lib.exceptions;
+
+import ch.systemsx.cisd.hdf5.HDF5Factory;
+import ch.systemsx.cisd.hdf5.IHDF5Reader;
+import ch.systemsx.cisd.hdf5.IHDF5Writer;
+
+
+//Set up all directories. 
+expfolder = "Y:/Chenghang/ET33_Tigre/20230828_1/";
+hdf5_folder = expfolder + "analysis/XYaligned_hdf5/";
+hdf5_folder_out = expfolder + "analysis/Rigid_hdf5/";
+new File(hdf5_folder_out).mkdirs();
+rigid_align_folder = expfolder + "analysis/rigid_align/";
+xml_file = rigid_align_folder + "rigid.xml";
+
+//Open the project from xml files. 
+Project p = Project.openFSProject(xml_file,false);
+layerset = p.getRootLayerSet();
+int num_images = layerset.size();
+
+//Go through each individual sections. 
+for (int i = 1;i <= num_images;++i){
+	print(i);
+	layer = layerset.getLayer((i-1));
+	patches = layer.getPatches(true);
+	patch = patches.get(0);
+	ct = patch.getFullCoordinateTransform();
+	
+	hdf5_file_488 = hdf5_folder + "488storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	hdf5_file_488_out = hdf5_folder_out + "488storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	//hdf5_file_561 = hdf5_folder + "561storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	//hdf5_file_561_out = hdf5_folder_out + "561storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	hdf5_file_647 = hdf5_folder + "647storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	hdf5_file_647_out = hdf5_folder_out + "647storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	hdf5_file_750 = hdf5_folder + "750storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	hdf5_file_750_out = hdf5_folder_out + "750storm_" + String.format("%03d",(i-1)) + ".hdf5";
+	
+	//The 488 channel hdf5 file: 
+	hdf5Handle = HDF5Factory.open(hdf5_file_488);
+	IHDF5SimpleWriter writer = HDF5Factory.open(hdf5_file_488_out);
+	n5 = new N5HDF5Reader(hdf5Handle, new int[]{10000, 100, 100});
+	for (frame : n5.list("/")){
+		if (frame.matches("tracks_(.*)")) {
+			xs = N5Utils.open(n5, frame + "/x");
+			ys = N5Utils.open(n5, frame + "/y");
+			zs = N5Utils.open(n5, frame + "/z");
+			xCursor = xs.cursor();
+			yCursor = ys.cursor();
+			zCursor = zs.cursor();
+			coordinates = new ArrayList();
+			while (xCursor.hasNext()) {
+				x = xCursor.next().get();
+				y = yCursor.next().get();
+				z = zCursor.next().get();
+				coordinates.add(new double[]{x,y});
+			}
+			transformedCoordinates = new ArrayList();
+			for (coordinate:coordinates){
+				transformedCoordinate = ct.apply(coordinate);
+				transformedCoordinates.add(transformedCoordinate);
+			}
+			size_coordiante = transformedCoordinates.size();
+			double[] x_coordinates = new double[size_coordiante];
+			double[] y_coordinates = new double[size_coordiante];
+			double[] z_coordinates = new double[size_coordiante];
+			int count = 0;
+			for (coordinate:transformedCoordinates){
+				x_coordinates[count] = coordinate[0];
+				y_coordinates[count] = coordinate[1];
+				z_coordinates[count] = z;
+				count += 1;
+			}
+			writer.writeDoubleArray(frame + "/x",x_coordinates);
+			writer.writeDoubleArray(frame + "/y",y_coordinates);
+			writer.writeDoubleArray(frame + "/z",z_coordinates);
+		}
+	}
+	writer.close();
+	
+	//The 561 channel hdf5 file: 
+//	hdf5Handle = HDF5Factory.open(hdf5_file_561);
+//	IHDF5SimpleWriter writer = HDF5Factory.open(hdf5_file_561_out);
+//	n5 = new N5HDF5Reader(hdf5Handle, new int[]{10000, 100, 100});
+//	for (frame : n5.list("/")){
+//		if (frame.matches("tracks_(.*)")) {
+//			xs = N5Utils.open(n5, frame + "/x");
+//			ys = N5Utils.open(n5, frame + "/y");
+//			zs = N5Utils.open(n5, frame + "/z");
+//			xCursor = xs.cursor();
+//			yCursor = ys.cursor();
+//			zCursor = zs.cursor();
+//			coordinates = new ArrayList();
+//			while (xCursor.hasNext()) {
+//				x = xCursor.next().get();
+//				y = yCursor.next().get();
+//				z = zCursor.next().get();
+//				coordinates.add(new double[]{x,y});
+//			}
+//			transformedCoordinates = new ArrayList();
+//			for (coordinate:coordinates){
+//				transformedCoordinate = ct.apply(coordinate);
+//				transformedCoordinates.add(transformedCoordinate);
+//			}
+//			size_coordiante = transformedCoordinates.size();
+//			double[] x_coordinates = new double[size_coordiante];
+//			double[] y_coordinates = new double[size_coordiante];
+//			double[] z_coordinates = new double[size_coordiante];
+//			int count = 0;
+//			for (coordinate:transformedCoordinates){
+//				x_coordinates[count] = coordinate[0];
+//				y_coordinates[count] = coordinate[1];
+//				z_coordinates[count] = z;
+//				count += 1;
+//			}
+//			writer.writeDoubleArray(frame + "/x",x_coordinates);
+//			writer.writeDoubleArray(frame + "/y",y_coordinates);
+//			writer.writeDoubleArray(frame + "/z",z_coordinates);
+//		}
+//	}
+//	writer.close();
+	
+	//The 647 channel hdf5 file: 
+	hdf5Handle = HDF5Factory.open(hdf5_file_647);
+	IHDF5SimpleWriter writer = HDF5Factory.open(hdf5_file_647_out);
+	n5 = new N5HDF5Reader(hdf5Handle, new int[]{10000, 100, 100});
+	for (frame : n5.list("/")){
+		if (frame.matches("tracks_(.*)")) {
+			xs = N5Utils.open(n5, frame + "/x");
+			ys = N5Utils.open(n5, frame + "/y");
+			zs = N5Utils.open(n5, frame + "/z");
+			xCursor = xs.cursor();
+			yCursor = ys.cursor();
+			zCursor = zs.cursor();
+			coordinates = new ArrayList();
+			while (xCursor.hasNext()) {
+				x = xCursor.next().get();
+				y = yCursor.next().get();
+				z = zCursor.next().get();
+				coordinates.add(new double[]{x,y});
+			}
+			transformedCoordinates = new ArrayList();
+			for (coordinate:coordinates){
+				transformedCoordinate = ct.apply(coordinate);
+				transformedCoordinates.add(transformedCoordinate);
+			}
+			size_coordiante = transformedCoordinates.size();
+			double[] x_coordinates = new double[size_coordiante];
+			double[] y_coordinates = new double[size_coordiante];
+			double[] z_coordinates = new double[size_coordiante];
+			int count = 0;
+			for (coordinate:transformedCoordinates){
+				x_coordinates[count] = coordinate[0];
+				y_coordinates[count] = coordinate[1];
+				z_coordinates[count] = z;
+				count += 1;
+			}
+			writer.writeDoubleArray(frame + "/x",x_coordinates);
+			writer.writeDoubleArray(frame + "/y",y_coordinates);
+			writer.writeDoubleArray(frame + "/z",z_coordinates);
+		}
+	}
+	writer.close();
+	
+	//The 750 channel hdf5 file: 
+	hdf5Handle = HDF5Factory.open(hdf5_file_750);
+	IHDF5SimpleWriter writer = HDF5Factory.open(hdf5_file_750_out);
+	n5 = new N5HDF5Reader(hdf5Handle, new int[]{10000, 100, 100});
+	
+	for (frame : n5.list("/")){
+		if (frame.matches("tracks_(.*)")) {
+			xs = N5Utils.open(n5, frame + "/x");
+			ys = N5Utils.open(n5, frame + "/y");
+			zs = N5Utils.open(n5, frame + "/z");
+			xCursor = xs.cursor();
+			yCursor = ys.cursor();
+			zCursor = zs.cursor();
+			coordinates = new ArrayList();
+			while (xCursor.hasNext()) {
+				x = xCursor.next().get();
+				y = yCursor.next().get();
+				z = zCursor.next().get();
+				coordinates.add(new double[]{x,y});
+			}
+			transformedCoordinates = new ArrayList();
+			for (coordinate:coordinates){
+				transformedCoordinate = ct.apply(coordinate);
+				transformedCoordinates.add(transformedCoordinate);
+			}
+			size_coordiante = transformedCoordinates.size();
+			double[] x_coordinates = new double[size_coordiante];
+			double[] y_coordinates = new double[size_coordiante];
+			double[] z_coordinates = new double[size_coordiante];
+			int count = 0;
+			for (coordinate:transformedCoordinates){
+				x_coordinates[count] = coordinate[0];
+				y_coordinates[count] = coordinate[1];
+				z_coordinates[count] = z;
+				count += 1;
+			}
+			writer.writeDoubleArray(frame + "/x",x_coordinates);
+			writer.writeDoubleArray(frame + "/y",y_coordinates);
+			writer.writeDoubleArray(frame + "/z",z_coordinates);
+		}
+	}
+	writer.close();
+}
+print("done")
